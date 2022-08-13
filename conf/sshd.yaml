@@ -1,0 +1,41 @@
+server:
+  sshd:
+    listen: "0.0.0.0:2222"
+    hostkeypath: "/etc/ssh/ssh_host_rsa_key"
+    capubpath: "/etc/ssh/ca.pub"
+
+client:
+  httpclient:
+    domain: "127.0.0.1"
+    port: 443
+    appcode: "xxxxx"
+    appkey: "xxxxx"
+
+log:
+  path: "./log" # 日志文件的目录
+  level: "debug" # 支持debug,info,warn,error。error日志不管怎么设置总会打到error.log
+  maxSize: 128 # 日志文件最大的大小，单位是M
+  maxBackups: 10 # 要保留的最大旧日志文件数，但过期了（>MaxAge）仍可能删除
+  maxAge: 7 # 保留日志的天数
+  compress: true # 备份的日志是否压缩
+  showConsole: true # 是否增加控制台输出
+
+mysql: # 驱动名，目前只支持mysql。实际还可以支持postgres,sqlite,mssql，但默认关闭
+  default: # 数据库实例名，如果没有配置default则需要在使用时指定数据库实例名
+    maxIdleConns: 20
+    maxOpenConns: 120
+    connMaxLifetime: 1h
+    timeOut: 40s
+    debug: false
+    charset: "utf8" # 可选，默认为utf8
+    host: "127.0.0.1"
+    port: 3306
+    database: "test"
+    username: "test"
+    password: ""
+
+prometheus:
+  default:
+    host: "127.0.0.1:12345"
+    subsystem: "default"
+    path: "/metrics"
