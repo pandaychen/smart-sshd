@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"sshd/conf"
 	"sshd/httpauth"
+	"sshd/pkg/xterm"
 	"sshd/sshauth"
 	"sshd/sshbash"
 	"sshd/system"
@@ -105,7 +107,7 @@ func (s *SmartSshdServer) StartSshdStart() error {
 // Handler is a callback for handling established SSH sessions -- type Handler func(Session)
 func (s *SmartSshdServer) SessionHandlerCallback(session glssh.Session) {
 	s.Logger.Info("[SessionHandlerCallback]start user session", zap.String("user", session.User()), zap.Any("raddr", session.RemoteAddr()), zap.String("sessionid", session.Context().(glssh.Context).SessionID()))
-
+	//fmt.Println(session.RawCommand(), session.RawCommand())
 	user, err := s.LocalUsers.GetUser(session.User())
 	if err != nil {
 		s.Logger.Error("[SessionHandlerCallback]get user error", zap.String("errmsg", err.Error()))
@@ -113,8 +115,32 @@ func (s *SmartSshdServer) SessionHandlerCallback(session glssh.Session) {
 		return
 	}
 
-	s.Logger.Info("[SessionHandlerCallback]", zap.String("user", session.User()), zap.Any("raddr", session.RemoteAddr()), zap.String("sessionid", session.Context().(glssh.Context).SessionID()), zap.String("shell", user.Shell))
-
+	//TODO：自定义命令
+	if len(session.RawCommand()) != 0 {
+		cmd := exec.Command("top")
+		ptyReq, winCh, isPty := session.Pty()
+		if isPty {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("TERM=%s", ptyReq.Term))
+			f, err := pty.Start(cmd)
+			if err != nil {
+				return
+			}
+			go func() {
+				for win := range winCh {
+					xterm.SetWinsize(f, win.Width, win.Height)
+				}
+			}()
+			go func() {
+				io.Copy(f, session) // stdin
+			}()
+			io.Copy(session, f) // stdout
+			cmd.Wait()
+		} else {
+			io.WriteString(session, "No PTY requested.\n")
+			return
+		}
+		return
+	}
 	if user.Shell == "" {
 		user.Shell = defaultShell
 	}
